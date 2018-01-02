@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using Android.Content;
 using Android.Content.PM;
 using Android.Provider;
+using Java.Nio;
 
 namespace WhatIsThis
 {
@@ -21,7 +22,7 @@ namespace WhatIsThis
         protected override void OnCreate(Bundle savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
-
+            
             // Set our view from the "main" layout resource
             SetContentView(Resource.Layout.Main);
 
@@ -75,14 +76,29 @@ namespace WhatIsThis
             SendBroadcast(mediaScanIntent);
 
             // Display in ImageView. We will resize the bitmap to fit the display.
-            // Loading the full sized image will consume to much memory
+            // Loading the full sized image will consume too much memory
             // and cause the application to crash.
-
-
             ImageView imageView = FindViewById<ImageView>(Resource.Id.imageView1);
             int height = Resources.DisplayMetrics.HeightPixels;
             int width = imageView.Height;
             _bitmap = _file.Path.LoadAndResizeBitmap(width, height);
+
+            /* how to convert from Android image to C# image
+            var byteArray = ByteBuffer.Allocate(_bitmap.ByteCount);
+            _bitmap.CopyPixelsToBuffer(byteArray);
+            byte[] bytes = byteArray.ToArray<byte>();
+            var image = new Xamarin.Forms.Image();        
+            image.Source = Xamarin.Forms.ImageSource.FromStream(() => new System.IO.MemoryStream(bytes));
+            */
+            var foo = new Google.Apis.Services.BaseClientService.Initializer()
+            {
+                ApplicationName = "Discovery Sample",
+                ApiKey = "[YOUR_API_KEY_HERE]",
+            };
+            var client = Google.Cloud.Vision.V1.ImageAnnotatorClient.Create();
+            var response = client.DetectLabels(Google.Cloud.Vision.V1.Image.FromFile(_file.Path));
+            
+
             if (_bitmap != null)
             {
                 imageView.SetImageBitmap(_bitmap);
