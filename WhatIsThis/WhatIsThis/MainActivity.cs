@@ -8,7 +8,8 @@ using Android.Content;
 using Android.Content.PM;
 using Android.Provider;
 using Java.Nio;
-
+using Flurl.Http;
+//https://keestalkstech.com/2016/06/get-keywords-for-images-from-the-google-cloud-vision-api-with-c/
 namespace WhatIsThis
 {
     [Activity(Label = "WhatIsThis", MainLauncher = true, Icon = "@mipmap/icon")]
@@ -95,9 +96,56 @@ namespace WhatIsThis
                 ApplicationName = "Discovery Sample",
                 ApiKey = "[YOUR_API_KEY_HERE]",
             };
-            var client = Google.Cloud.Vision.V1.ImageAnnotatorClient.Create();
-            var response = client.DetectLabels(Google.Cloud.Vision.V1.Image.FromFile(_file.Path));
+            //var client = Google.Cloud.Vision.V1.ImageAnnotatorClient.Create();
+            //var response = client.DetectLabels(Google.Cloud.Vision.V1.Image.FromFile(_file.Path));
+
+            string bitmapString = "";
+            using (var stream = new System.IO.MemoryStream())
+            {
+                _bitmap.Compress(Bitmap.CompressFormat.Jpeg, 0, stream);
+
+                var bytes = stream.ToArray();
+                bitmapString = System.Convert.ToBase64String(bytes);
+            }
+
+            //var apiData = new
+            //{
+            //    key = " e07bcdb4138be3fa87a617d39bbd63f8abb193eb",
+            //    image = new { content = bitmapString }
+            //};
+            //var apiResponse = await "https://vision.googleapis.com/v1/images:annotate"
+            //    .PostUrlEncodedAsync(apiData)
+            //    .ReceiveString();
             
+            string credPath = "google_api.json";
+            Google.Apis.Auth.OAuth2.GoogleCredential cred;
+            // Get active credential
+            using (var stream = Assets.Open(credPath))
+            {
+                cred = Google.Apis.Auth.OAuth2.GoogleCredential.FromStream(stream);
+            }
+            cred = cred.CreateScoped(Google.Apis.Vision.v1.VisionService.Scope.CloudPlatform);
+
+            // By default, the Google.Cloud.BigQuery.V2 library client will authenticate 
+            // using the service account file (created in the Google Developers 
+            // Console) specified by the GOOGLE_APPLICATION_CREDENTIALS 
+            // environment variable. If you are running on
+            // a Google Compute Engine VM, authentication is completely 
+            // automatic.
+            var client = new Google.Apis.Vision.v1.VisionService(new Google.Apis.Services.BaseClientService.Initializer()
+            {
+                ApplicationName = "subtle-isotope-190917",
+                HttpClientInitializer = cred
+            });
+            var request = new Google.Apis.Vision.v1.Data.AnnotateImageRequest();
+            request.Image = new Google.Apis.Vision.v1.Data.Image();
+            request.Image.Content = bitmapString;
+            request.Features = new List<Google.Apis.Vision.v1.Data.Feature>();
+            request.Features.Add(new Google.Apis.Vision.v1.Data.Feature() { Type = "LABEL_DETECTION" });
+            var batch = new Google.Apis.Vision.v1.Data.BatchAnnotateImagesRequest();
+            batch.Requests = new List<Google.Apis.Vision.v1.Data.AnnotateImageRequest>();
+            batch.Requests.Add(request);
+            var apiResult = client.Images.Annotate(batch).Execute();
 
             if (_bitmap != null)
             {
