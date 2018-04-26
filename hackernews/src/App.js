@@ -8,42 +8,51 @@ const PARAM_SEARCH = 'query=';
 const url = `${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${DEFAULT_QUERY}`;
 console.log(url);
 
-function isSearched(searchTerm) {
-   return function (item) {
-      return item.title.toLowerCase().includes(searchTerm.toLowerCase());
-   }
-}
-
 class App extends Component {
    constructor(props) {
       super(props);
       this.state = { searchTerm: DEFAULT_QUERY, result: null };
 
       //bind function to object (allows for correct usage of *this*)
+      this.fetchSearchTopStories = this.fetchSearchTopStories.bind(this);
       this.onDismiss = this.onDismiss.bind(this);
       this.onSearchChange = this.onSearchChange.bind(this);
+      this.onSearchSubmit = this.onSearchSubmit.bind(this);
       this.setSearchTopStories = this.setSearchTopStories.bind(this);
    }
 
+   fetchSearchTopStories(searchTerm){
+      fetch(`${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${searchTerm}`)
+         .then(response => response.json())
+         .then(result => this.setSearchTopStories(result))
+         .catch(error => error);
+   }
+
    onDismiss(id) {
-      const updatedList = this.state.list.filter(item => { return item.objectID !== id });
-      this.setState({ list: updatedList });
+      const isNotId = item => {
+         return item.objectID !== id;
+      };
+      const updatedHits = this.state.result.hits.filter(isNotId);
+      this.setState({ result: {...this.state.result, hits: updatedHits} });
    }
 
    onSearchChange(evt) {
       this.setState({ searchTerm: evt.target.value });
    }
 
-   setSearchTopStories(result){
-       this.setState({result});
+   onSearchSubmit(evt){
+      const {searchTerm} = this.state;
+      this.fetchSearchTopStories(searchTerm);
+      evt.preventDefault();
    }
 
-   componentDidMount(){
+   setSearchTopStories(result) {
+      this.setState({ result });
+   }
+
+   componentDidMount() {
       const {searchTerm} = this.state;
-      fetch(`${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${searchTerm}`)
-         .then(response => response.json())
-         .then(result => this.setSearchTopStories(result))
-         .catch(error=>error);
+      this.fetchSearchTopStories(searchTerm);
    }
 
    //alternate version of onDismiss that doesn't use bind in constructor
@@ -56,16 +65,30 @@ class App extends Component {
 
    render() {
       const { searchTerm, result } = this.state;
-      if(result === null){
-         return null;
-      }
       return (
          <div className="page">
             <div className="interactions">
-               <Search value={searchTerm} onChange={this.onSearchChange}>Search</Search>
+               <Search 
+                  value={searchTerm} 
+                  onChange={this.onSearchChange}
+                  onSubmit={this.onSearchSubmit}
+                  >Search</Search>
             </div>
-            <Table list={result.hits} pattern={searchTerm} onDismiss={this.onDismiss} />
+            {
+               //TODO: figure out how to do more full-fledged conditional rendering
+               result 
+               ? <Table list={result.hits} onDismiss={this.onDismiss} />
+               : <Loading />
+            }
          </div>
+      );
+   }
+}
+
+class Loading extends Component{
+   render(){
+      return(
+         <span>Loading...</span>
       );
    }
 }
@@ -79,11 +102,11 @@ class Button extends Component {
    }
 }
 
-function Search({ value, onChange, children }) {
+function Search({ value, onChange, onSubmit, children }) {
    return (
-      <form>
-         {children}
+      <form onSubmit={onSubmit}>
          <input type="text" value={value} onChange={onChange} />
+         <button type="submit">{children}</button>
       </form>
    );
 }
@@ -102,7 +125,7 @@ class Table extends Component {
       };
       return (
          <div className="table">
-            {list.filter(isSearched(pattern)).map(item =>
+            {list.map(item =>
                <div key={item.objectID} className="table-row">
                   <span style={largeColumn}>
                      <a href={item.url}>{item.title}</a>
