@@ -1,18 +1,42 @@
 import React, { Component } from 'react';
-import logo from './logo.svg';
+import axios from 'axios'
 import './App.css';
 
+/*
+axios('https://api-v2v3search-0.nuget.org/query?q=FileCache&prerelease=false')
+         .then(result => this._isMounted && this.setSearchTopStories(result.data))
+         .catch(error => this._isMounted && this.setState({ error }));
+*/
+
 class App extends Component {
+   
+   constructor(props){
+      super(props);
+      this.state = {
+         results: null
+      };
+
+      //bind function to object (allows for correct usage of *this*)
+      this.handleNugetResponse = this.handleNugetResponse.bind(this);
+   }
+
+   handleNugetResponse(response){
+      let data = response.data[0];
+      let title = data.title;
+      let downloads = data.downloads;
+   }
+
+   
+
+   componentDidMount(){
+      axios('https://api-v2v3search-0.nuget.org/query?q=FileCache&prerelease=false')
+         .then(result => this.handleNugetResponse(result.data))
+         .catch();
+   }
   render() {
     return (
-      <div className="App">
-        <header className="App-header">
-          <img src={logo} className="App-logo" alt="logo" />
-          <h1 className="App-title">Welcome to React</h1>
-        </header>
-        <p className="App-intro">
-          To get started, edit <code>src/App.js</code> and save to reload.
-        </p>
+      <div>
+
       </div>
     );
   }
